@@ -23,24 +23,20 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include <endian.h>
-#include <byteswap.h>
+/* #include <endian.h> */
+/* #include <byteswap.h> */
 #include <assert.h>
 #include <stddef.h>
-#include <linux/types.h>
+/* #include <linux/types.h> */
 #include <stdint.h>
 
-#include <features.h>
+/* #include <features.h> */
 
 #ifndef __GLIBC__
 #ifndef BTRFS_DISABLE_BACKTRACE
 #define BTRFS_DISABLE_BACKTRACE
 #endif
 #define __always_inline __inline __attribute__ ((__always_inline__))
-#endif
-
-#ifndef BTRFS_DISABLE_BACKTRACE
-#include <execinfo.h>
 #endif
 
 #define ptr_to_u64(x)	((u64)(uintptr_t)x)
@@ -76,46 +72,6 @@
 #define BUILD_ASSERT(x)
 #endif
 
-#ifndef BTRFS_DISABLE_BACKTRACE
-#define MAX_BACKTRACE	16
-static inline void print_trace(void)
-{
-	void *array[MAX_BACKTRACE];
-	int size;
-
-	size = backtrace(array, MAX_BACKTRACE);
-	backtrace_symbols_fd(array, size, 2);
-}
-#endif
-
-static inline void warning_trace(const char *assertion, const char *filename,
-			      const char *func, unsigned line, long val)
-{
-	if (!val)
-		return;
-	fprintf(stderr,
-		"%s:%d: %s: Warning: assertion `%s` failed, value %ld\n",
-		filename, line, func, assertion, val);
-#ifndef BTRFS_DISABLE_BACKTRACE
-	print_trace();
-#endif
-}
-
-static inline void bugon_trace(const char *assertion, const char *filename,
-			      const char *func, unsigned line, long val)
-{
-	if (!val)
-		return;
-	fprintf(stderr,
-		"%s:%d: %s: BUG_ON `%s` triggered, value %ld\n",
-		filename, line, func, assertion, val);
-#ifndef BTRFS_DISABLE_BACKTRACE
-	print_trace();
-#endif
-	abort();
-	exit(1);
-}
-
 #ifdef __CHECKER__
 #define __force    __attribute__((force))
 #define __bitwise__ __attribute__((bitwise))
@@ -124,36 +80,22 @@ static inline void bugon_trace(const char *assertion, const char *filename,
 #define __bitwise__
 #endif
 
-#ifndef __CHECKER__
+#include <include/grub/types.h>
+typedef grub_uint64_t u64;
+typedef grub_uint32_t u32;
+typedef grub_uint16_t u16;
+/* typedef grub_uint8_t byte; */
+typedef grub_uint8_t u8;
+typedef grub_size_t size_t;
+
 /*
- * Since we're using primitive definitions from kernel-space, we need to
- * define __KERNEL__ so that system header files know which definitions
- * to use.
- */
-#define __KERNEL__
-#include <asm/types.h>
 typedef __u32 u32;
 typedef __u64 u64;
 typedef __u16 u16;
 typedef __u8 u8;
 typedef __s64 s64;
 typedef __s32 s32;
-
-/*
- * Continuing to define __KERNEL__ breaks others parts of the code, so
- * we can just undefine it now that we have the correct headers...
- */
-#undef __KERNEL__
-#else
-typedef unsigned int u32;
-typedef unsigned int __u32;
-typedef unsigned long long u64;
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef long long s64;
-typedef int s32;
-#endif
-
+*/
 
 struct vma_shared { int prio_tree_node; };
 struct vm_area_struct {
@@ -290,26 +232,6 @@ static inline int IS_ERR_OR_NULL(const void *ptr)
 #define vmalloc(x) malloc(x)
 #define vfree(x) free(x)
 
-#ifndef BTRFS_DISABLE_BACKTRACE
-static inline void assert_trace(const char *assertion, const char *filename,
-			      const char *func, unsigned line, long val)
-{
-	if (val)
-		return;
-	fprintf(stderr,
-		"%s:%d: %s: Assertion `%s` failed, value %ld\n",
-		filename, line, func, assertion, val);
-#ifndef BTRFS_DISABLE_BACKTRACE
-	print_trace();
-#endif
-	abort();
-	exit(1);
-}
-#define	ASSERT(c) assert_trace(#c, __FILE__, __func__, __LINE__, (long)(c))
-#else
-#define ASSERT(c) assert(c)
-#endif
-
 #define BUG_ON(c) bugon_trace(#c, __FILE__, __func__, __LINE__, (long)(c))
 #define BUG() BUG_ON(1)
 #define WARN_ON(c) warning_trace(#c, __FILE__, __func__, __LINE__, (long)(c))
@@ -349,12 +271,12 @@ typedef u64 __bitwise __be64;
 #define __le8 u8
 
 #if __BYTE_ORDER == __BIG_ENDIAN
-#define cpu_to_le64(x) ((__force __le64)(u64)(bswap_64(x)))
-#define le64_to_cpu(x) ((__force u64)(__le64)(bswap_64(x)))
-#define cpu_to_le32(x) ((__force __le32)(u32)(bswap_32(x)))
-#define le32_to_cpu(x) ((__force u32)(__le32)(bswap_32(x)))
-#define cpu_to_le16(x) ((__force __le16)(u16)(bswap_16(x)))
-#define le16_to_cpu(x) ((__force u16)(__le16)(bswap_16(x)))
+#define cpu_to_le64(x) ((__force __le64)(u64)(__builtin_bswap64(x)))
+#define le64_to_cpu(x) ((__force u64)(__le64)(__builtin_bswap64(x)))
+#define cpu_to_le32(x) ((__force __le32)(u32)(__builtin_bswap32(x)))
+#define le32_to_cpu(x) ((__force u32)(__le32)(__builtin_bswap32(x)))
+#define cpu_to_le16(x) ((__force __le16)(u16)(__builtin_bswap16(x)))
+#define le16_to_cpu(x) ((__force u16)(__le16)(__builtin_bswap16(x)))
 
 #define cpu_to_be64(x) ((__force __be64)(u64)(x))
 #define be64_to_cpu(x) ((__force u64)(__be64)(x))
@@ -371,12 +293,12 @@ typedef u64 __bitwise __be64;
 #define cpu_to_le16(x) ((__force __le16)(u16)(x))
 #define le16_to_cpu(x) ((__force u16)(__le16)(x))
 
-#define cpu_to_be64(x) ((__force __be64)(u64)(bswap_64(x)))
-#define be64_to_cpu(x) ((__force u64)(__be64)(bswap_64(x)))
-#define cpu_to_be32(x) ((__force __be32)(u32)(bswap_32(x)))
-#define be32_to_cpu(x) ((__force u32)(__be32)(bswap_32(x)))
-#define cpu_to_be16(x) ((__force __be16)(u16)(bswap_16(x)))
-#define be16_to_cpu(x) ((__force u16)(__be16)(bswap_16(x)))
+#define cpu_to_be64(x) ((__force __be64)(u64)(__builtin_bswap64(x)))
+#define be64_to_cpu(x) ((__force u64)(__be64)(__builtin_bswap64(x)))
+#define cpu_to_be32(x) ((__force __be32)(u32)(__builtin_bswap32(x)))
+#define be32_to_cpu(x) ((__force u32)(__be32)(__builtin_bswap32(x)))
+#define cpu_to_be16(x) ((__force __be16)(u16)(__builtin_bswap16(x)))
+#define be16_to_cpu(x) ((__force u16)(__be16)(__builtin_bswap16(x)))
 #endif
 
 struct __una_u16 { __le16 x; } __attribute__((__packed__));

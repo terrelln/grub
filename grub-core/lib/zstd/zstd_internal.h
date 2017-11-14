@@ -28,10 +28,13 @@
 ***************************************/
 #include "error_private.h"
 #include "mem.h"
-#include <linux/compiler.h>
-#include <linux/kernel.h>
-#include <linux/xxhash.h>
-#include <linux/zstd.h>
+/* #include <linux/compiler.h> */
+/* #include <linux/kernel.h> */
+/* #include <linux/xxhash.h> */
+/* #include <linux/zstd.h> */
+
+#include "xxhash.h"
+#include "zstd.h"
 
 /*-*************************************
 *  shared macros

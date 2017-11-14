@@ -22,8 +22,13 @@
 /* ****************************************
 *  Dependencies
 ******************************************/
-#include <linux/types.h> /* size_t */
-#include <linux/zstd.h>  /* enum list */
+/* #include <linux/types.h> */
+/* size_t */
+/* #include <linux/zstd.h> */
+/* enum list */
+
+#include "zstd.h"
+/* #error "HERE" */
 
 /* ****************************************
 *  Compiler-specific

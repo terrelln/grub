@@ -20,9 +20,13 @@
 /*-****************************************
 *  Dependencies
 ******************************************/
-#include <asm/unaligned.h>
-#include <linux/string.h> /* memcpy */
-#include <linux/types.h>  /* size_t, ptrdiff_t */
+/* #include <asm/unaligned.h> */
+/* #include <linux/string.h> */
+/* memcpy */
+/* #include <linux/types.h> */
+/* size_t, ptrdiff_t */
+
+#include "kerncompat.h"
 
 /*-****************************************
 *  Compiler specifics
@@ -56,19 +60,25 @@ ZSTD_STATIC unsigned ZSTD_64bits(void) { return sizeof(size_t) == 8; }
 
 ZSTD_STATIC unsigned ZSTD_isLittleEndian(void) { return ZSTD_LITTLE_ENDIAN; }
 
-ZSTD_STATIC U16 ZSTD_read16(const void *memPtr) { return get_unaligned((const U16 *)memPtr); }
+ZSTD_STATIC U16 ZSTD_read16(const void *memPtr) { return get_unaligned_16((const U16 *)memPtr); }
 
-ZSTD_STATIC U32 ZSTD_read32(const void *memPtr) { return get_unaligned((const U32 *)memPtr); }
+ZSTD_STATIC U32 ZSTD_read32(const void *memPtr) { return get_unaligned_32((const U32 *)memPtr); }
 
-ZSTD_STATIC U64 ZSTD_read64(const void *memPtr) { return get_unaligned((const U64 *)memPtr); }
+ZSTD_STATIC U64 ZSTD_read64(const void *memPtr) { return get_unaligned_64((const U64 *)memPtr); }
 
-ZSTD_STATIC size_t ZSTD_readST(const void *memPtr) { return get_unaligned((const size_t *)memPtr); }
+#if __SIZEOF_LONG__ == 8
+ZSTD_STATIC size_t ZSTD_readST(const void *memPtr) { return get_unaligned_64((const size_t *)memPtr); }
+#elif __SIZEOF_LONG__ == 4
+ZSTD_STATIC size_t ZSTD_readST(const void *memPtr) { return get_unaligned_32((const size_t *)memPtr); }
+#else
+#error "size_t size is not supported"
+#endif
 
-ZSTD_STATIC void ZSTD_write16(void *memPtr, U16 value) { put_unaligned(value, (U16 *)memPtr); }
+ZSTD_STATIC void ZSTD_write16(void *memPtr, U16 value) { put_unaligned_16(value, (U16 *)memPtr); }
 
-ZSTD_STATIC void ZSTD_write32(void *memPtr, U32 value) { put_unaligned(value, (U32 *)memPtr); }
+ZSTD_STATIC void ZSTD_write32(void *memPtr, U32 value) { put_unaligned_32(value, (U32 *)memPtr); }
 
-ZSTD_STATIC void ZSTD_write64(void *memPtr, U64 value) { put_unaligned(value, (U64 *)memPtr); }
+ZSTD_STATIC void ZSTD_write64(void *memPtr, U64 value) { put_unaligned_64(value, (U64 *)memPtr); }
 
 /*=== Little endian r/w ===*/
 

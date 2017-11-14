@@ -43,7 +43,11 @@
 /*-*****************************************
 *  Dependencies
 ******************************************/
-#include <linux/types.h> /* size_t, ptrdiff_t */
+/* #include <linux/types.h> */
+/* size_t, ptrdiff_t */
+
+#include <include/grub/types.h>
+typedef grub_size_t size_t;
 
 /*-*****************************************
 *  FSE_PUBLIC_API : control library symbols visibility

@@ -1242,7 +1242,7 @@ module = {
   common = fs/btrfs.c;
   common = lib/crc.c;
   cflags = '$(CFLAGS_POSIX) -Wno-undef';
-  cppflags = '-I$(srcdir)/lib/posix_wrap -I$(srcdir)/lib/minilzo -DMINILZO_HAVE_CONFIG_H';
+  cppflags = '-I$(srcdir)/lib/posix_wrap -I$(srcdir)/lib/minilzo -I$(srcdir)/lib/zstd -DMINILZO_HAVE_CONFIG_H';
 };
 
 module = {
@@ -2222,6 +2222,17 @@ module = {
   common = lib/minilzo/minilzo.c;
   cflags = '$(CFLAGS_POSIX) -Wno-undef -Wno-redundant-decls -Wno-error';
   cppflags = '-I$(srcdir)/lib/posix_wrap -I$(srcdir)/lib/minilzo -DMINILZO_HAVE_CONFIG_H';
+};
+
+module = {
+  name = zstdio;
+  common = io/zstdio.c;
+  common = lib/zstd/zstd_common.c;
+  common = lib/zstd/huf_decompress.c;
+  common = lib/zstd/decompress.c;
+  common = lib/zstd/xxhash.c;
+  cflags = '$(CFLAGS_POSIX) -Wno-undef -Wno-redundant-decls -Wno-error';
+  cppflags = '-I$(srcdir)/lib/posix_wrap -I$(srcdir)/lib/zstd';
 };
 
 module = {

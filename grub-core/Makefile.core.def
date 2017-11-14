@@ -2230,6 +2230,7 @@ module = {
   common = lib/zstd/zstd_common.c;
   common = lib/zstd/huf_decompress.c;
   common = lib/zstd/fse_decompress.c;
+  common = lib/zstd/entropy_common.c;
   common = lib/zstd/decompress.c;
   common = lib/zstd/xxhash.c;
   cflags = '$(CFLAGS_POSIX) -Wno-undef -Wno-redundant-decls -Wno-error';

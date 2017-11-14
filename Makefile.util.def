@@ -167,6 +167,7 @@ library = {
   common = grub-core/lib/zstd/zstd_common.c;
   common = grub-core/lib/zstd/huf_decompress.c;
   common = grub-core/lib/zstd/fse_decompress.c;
+  common = grub-core/lib/zstd/entropy_common.c;
   common = grub-core/lib/zstd/decompress.c;
   common = grub-core/lib/zstd/xxhash.c;
 };

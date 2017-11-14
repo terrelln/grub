@@ -21,7 +21,8 @@
 /* #include <linux/types.h> */
 /* size_t */
 
-#error "ZSTD_H"
+#include <include/grub/types.h>
+typedef grub_size_t size_t;
 
 /*-*****************************************************************************
  * Introduction

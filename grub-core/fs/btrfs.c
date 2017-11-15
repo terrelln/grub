@@ -937,9 +937,6 @@ grub_btrfs_zstd_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
   void *wmem;
   grub_size_t wsize;
 
-  /*
-   * TODO: allocators
-   */
   wsize = ZSTD_DStreamWorkspaceBound(ZSTD_BTRFS_MAX_INPUT);
   wmem = grub_malloc(wsize);
   if (!wmem)
@@ -1004,7 +1001,6 @@ grub_btrfs_zstd_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
 	  if (!buf)
 	    return -1;
 
-	  /* TODO: zstd decompress */
 	  in_buf.src = ibuf;
 	  in_buf.pos = 0;
 	  in_buf.size = cblock_size;
@@ -1014,7 +1010,7 @@ grub_btrfs_zstd_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
 	  ret2 = ZSTD_decompressStream(stream, &out_buf, &in_buf);
 	  if (ZSTD_isError(ret2))
 	    {
-	    /* CLEANUP */
+	      grub_free (wmem);
 	      grub_free (buf);
 	      return -1;
 	    }
@@ -1043,6 +1039,7 @@ grub_btrfs_zstd_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
       ret2 = ZSTD_decompressStream(stream, &out_buf, &in_buf);
       if (ZSTD_isError(ret2))
         {
+	   grub_free (wmem);
 	   return -1;
 	}
       usize = out_buf.size;
@@ -1053,7 +1050,8 @@ grub_btrfs_zstd_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
       ibuf += cblock_size;
     }
 
-  return -1;
+  grub_free (wmem);
+  return ret;
 }
 
 static grub_ssize_t

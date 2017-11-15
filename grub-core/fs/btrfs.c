@@ -1090,7 +1090,7 @@ grub_btrfs_lzo_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
       lzo_uint usize = GRUB_BTRFS_LZO_BLOCK_SIZE;
 
       /* Don't let following uint32_t cross the page boundary.  */
-      if (((ibuf - ibuf0) & 0xffd) == 0xffc)
+      if (((ibuf - ibuf0) & 0xffc) == 0xffc)
 	ibuf = ((ibuf - ibuf0 + 3) & ~3) + ibuf0;
 
       cblock_size = grub_le_to_cpu32 (grub_get_unaligned32 (ibuf));

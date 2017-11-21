@@ -1229,6 +1229,7 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
 
       if (data->extent->compression != GRUB_BTRFS_COMPRESSION_NONE
 	  && data->extent->compression != GRUB_BTRFS_COMPRESSION_ZLIB
+	  && data->extent->compression != GRUB_BTRFS_COMPRESSION_ZSTD
 	  && data->extent->compression != GRUB_BTRFS_COMPRESSION_LZO)
 	{
 	  grub_error (GRUB_ERR_NOT_IMPLEMENTED_YET,
@@ -1269,7 +1270,7 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
 		  != (grub_ssize_t) csize)
 		return -1;
 	    }
-	  else if (data->extent->compression == GRUB_BTRFS_COMPRESSION_ZLIB)
+	  else if (data->extent->compression == GRUB_BTRFS_COMPRESSION_ZSTD)
 	    {
 	      if (grub_btrfs_zstd_decompress(data->extent->inl, data->extsize -
 					   ((grub_uint8_t *) data->extent->inl

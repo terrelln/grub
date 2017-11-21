@@ -931,20 +931,18 @@ grub_btrfs_zstd_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
   grub_uint32_t total_size, cblock_size;
   grub_size_t ret = 0;
   char *ibuf0 = ibuf;
-  ZSTD_inBuffer in_buf;
-  ZSTD_outBuffer out_buf;
-  ZSTD_DStream *stream;
+  ZSTD_DCtx *ctx;
   void *wmem;
   grub_size_t wsize;
 
-  wsize = ZSTD_DStreamWorkspaceBound(ZSTD_BTRFS_MAX_INPUT);
+  wsize = ZSTD_DCtxWorkspaceBound();
   wmem = grub_malloc(wsize);
   if (!wmem)
     {
        return -1;
     }
-  stream = ZSTD_initDStream(ZSTD_BTRFS_MAX_INPUT, wmem, wsize);
-  if (!stream)
+  ctx = ZSTD_initDCtx(wmem, wsize);
+  if (!ctx)
     {
        grub_free(wmem);
        return -1;
@@ -991,6 +989,7 @@ grub_btrfs_zstd_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
       /* Block partially filled with requested data.  */
       if (off > 0 || osize < GRUB_BTRFS_ZSTD_BLOCK_SIZE)
 	{
+
 	  grub_size_t to_copy = GRUB_BTRFS_ZSTD_BLOCK_SIZE - off;
 	  grub_uint8_t *buf;
 
@@ -1001,13 +1000,20 @@ grub_btrfs_zstd_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
 	  if (!buf)
 	    return -1;
 
-	  in_buf.src = ibuf;
-	  in_buf.pos = 0;
-	  in_buf.size = cblock_size;
-	  out_buf.dst = buf;
-	  out_buf.pos = 0;
-	  out_buf.size = usize;
-	  ret2 = ZSTD_decompressStream(stream, &out_buf, &in_buf);
+# if 0
+          size_t isize;
+
+	  isize = ZSTD_findFrameCompressedSize(ibuf, cblock_size);
+	  if (ZSTD_isError(isize))
+	    {
+	      grub_free (wmem);
+	      grub_free (buf);
+	      return -1;
+	    }
+	  /* assert isize == cblock_size */
+#endif
+
+	  ret2 = ZSTD_decompressDCtx(ctx, buf, usize, ibuf, cblock_size);
 	  if (ZSTD_isError(ret2))
 	    {
 	      grub_free (wmem);
@@ -1029,20 +1035,14 @@ grub_btrfs_zstd_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
 	  continue;
 	}
 
-      in_buf.src = ibuf;
-      in_buf.pos = 0;
-      in_buf.size = cblock_size;
-      out_buf.dst = obuf;
-      out_buf.pos = 0;
-      out_buf.size = usize;
       /* Decompress whole block directly to output buffer.  */
-      ret2 = ZSTD_decompressStream(stream, &out_buf, &in_buf);
+      ret2 = ZSTD_decompressDCtx(ctx, obuf, usize, ibuf, cblock_size);
       if (ZSTD_isError(ret2))
         {
 	   grub_free (wmem);
 	   return -1;
 	}
-      usize = out_buf.size;
+      usize = ret2;
 
       osize -= usize;
       ret += usize;

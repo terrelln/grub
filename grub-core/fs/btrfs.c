@@ -27,7 +27,7 @@
 #include <grub/lib/crc.h>
 #include <grub/deflate.h>
 #include <minilzo.h>
-#include <zstd.h>
+#include <grub/zstd.h>
 #include <grub/i18n.h>
 #include <grub/btrfs.h>
 

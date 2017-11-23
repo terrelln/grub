@@ -34,7 +34,7 @@
 /* #include <linux/zstd.h> */
 
 #include "xxhash.h"
-#include "zstd.h"
+#include <grub/zstd.h>
 
 /*-*************************************
 *  shared macros

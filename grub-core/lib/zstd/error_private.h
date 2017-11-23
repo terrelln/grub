@@ -27,8 +27,7 @@
 /* #include <linux/zstd.h> */
 /* enum list */
 
-#include "zstd.h"
-/* #error "HERE" */
+#include <grub/zstd.h>
 
 /* ****************************************
 *  Compiler-specific

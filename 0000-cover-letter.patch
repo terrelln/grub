@@ -1,0 +1,57 @@
+From 5ecc412feea0e7f91efbf7d3923a223b7a6eb387 Mon Sep 17 00:00:00 2001
+From: Nick Terrell <terrelln@fb.com>
+Date: Wed, 29 Aug 2018 14:45:52 -0700
+Subject: [PATCH 0/3] *** SUBJECT HERE ***
+To: Nick Terrell <terrelln@fb.com>
+Cc: David Sterba <dsterba@suse.cz>,
+    kernel-team@fb.com,
+    linux-btrfs@vger.kernel.org,
+    grub-devel@gnu.org
+
+*** BLURB HERE ***
+
+Nick Terrell (3):
+  Import kernel zstd
+  Patch the kernel zstd
+  Add btrfs zstd support
+
+ Makefile.util.def                   |    8 +-
+ grub-core/Makefile.core.def         |   10 +-
+ grub-core/fs/btrfs.c                |   85 +-
+ grub-core/lib/zstd/bitstream.h      |  380 ++++++
+ grub-core/lib/zstd/decompress.c     | 2494 +++++++++++++++++++++++++++++++++++
+ grub-core/lib/zstd/entropy_common.c |  243 ++++
+ grub-core/lib/zstd/error_private.h  |   52 +
+ grub-core/lib/zstd/fse.h            |  575 ++++++++
+ grub-core/lib/zstd/fse_decompress.c |  329 +++++
+ grub-core/lib/zstd/huf.h            |  212 +++
+ grub-core/lib/zstd/huf_decompress.c |  957 ++++++++++++++
+ grub-core/lib/zstd/kerncompat.h     |   69 +
+ grub-core/lib/zstd/mem.h            |  155 +++
+ grub-core/lib/zstd/xxhash.c         |  482 +++++++
+ grub-core/lib/zstd/xxhash.h         |  236 ++++
+ grub-core/lib/zstd/zstd.h           | 1157 ++++++++++++++++
+ grub-core/lib/zstd/zstd_common.c    |   75 ++
+ grub-core/lib/zstd/zstd_internal.h  |  265 ++++
+ tests/btrfs_test.in                 |    1 +
+ tests/util/grub-fs-tester.in        |    4 +-
+ 20 files changed, 7783 insertions(+), 6 deletions(-)
+ create mode 100644 grub-core/lib/zstd/bitstream.h
+ create mode 100644 grub-core/lib/zstd/decompress.c
+ create mode 100644 grub-core/lib/zstd/entropy_common.c
+ create mode 100644 grub-core/lib/zstd/error_private.h
+ create mode 100644 grub-core/lib/zstd/fse.h
+ create mode 100644 grub-core/lib/zstd/fse_decompress.c
+ create mode 100644 grub-core/lib/zstd/huf.h
+ create mode 100644 grub-core/lib/zstd/huf_decompress.c
+ create mode 100644 grub-core/lib/zstd/kerncompat.h
+ create mode 100644 grub-core/lib/zstd/mem.h
+ create mode 100644 grub-core/lib/zstd/xxhash.c
+ create mode 100644 grub-core/lib/zstd/xxhash.h
+ create mode 100644 grub-core/lib/zstd/zstd.h
+ create mode 100644 grub-core/lib/zstd/zstd_common.c
+ create mode 100644 grub-core/lib/zstd/zstd_internal.h
+
+-- 
+2.16.2
+

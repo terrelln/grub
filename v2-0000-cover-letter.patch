@@ -23,7 +23,7 @@ Upstream zstd commit hash: 4fa456d7f12f8b27bd3b2f5dfd4f46898cb31c24
 Upstream zstd commit name: Merge pull request #1354 from facebook/dev
 
 ---
-#!/bin/sh
+#!/bin/sh -e
 curl -L -O https://github.com/facebook/zstd/releases/download/v1.3.6/zstd-1.3.6.tar.gz
 curl -L -O https://github.com/facebook/zstd/releases/download/v1.3.6/zstd-1.3.6.tar.gz.sha256
 sha256sum --check zstd-1.3.6.tar.gz.sha256

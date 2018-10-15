@@ -1,0 +1,118 @@
+From 97bf8951f00d81754e0b1e4655b41afa04597889 Mon Sep 17 00:00:00 2001
+From: Nick Terrell <terrelln@fb.com>
+Date: Mon, 15 Oct 2018 16:35:54 -0700
+Subject: [PATCH v4 0/2] btrfs: Add zstd support to grub btrfs
+To: Nick Terrell <terrelln@fb.com>
+Cc: David Sterba <dsterba@suse.cz>,
+    kernel-team@fb.com,
+    linux-btrfs@vger.kernel.org,
+    grub-devel@gnu.org,
+    Daniel Kiper <dkiper@net-space.pl>
+
+Hi all,
+
+This patch set imports the upstream zstd library, adds zstd support to the
+btrfs module, and adds a test case. I've also tested the patch set by storing
+my boot partition in btrfs with and without zstd compression and rebooting.
+
+The fist patch imports the files needed to support zstd decompression from
+zstd-1.3.6 as-is. It is a very large patch. In case it doesn't make it,
+I've included the commit hash and the script I used to download the files.
+
+Upstream zstd commit hash: 4fa456d7f12f8b27bd3b2f5dfd4f46898cb31c24
+Upstream zstd commit name: Merge pull request #1354 from facebook/dev
+
+```
+#!/bin/sh -e
+
+curl -L -O https://github.com/facebook/zstd/releases/download/v1.3.6/zstd-1.3.6.tar.gz
+curl -L -O https://github.com/facebook/zstd/releases/download/v1.3.6/zstd-1.3.6.tar.gz.sha256
+sha256sum --check zstd-1.3.6.tar.gz.sha256
+tar xzf zstd-1.3.6.tar.gz
+
+SRC_LIB="zstd-1.3.6/lib"
+DST_LIB="grub-core/lib/zstd"
+rm -rf $DST_LIB
+mkdir -p $DST_LIB
+cp $SRC_LIB/zstd.h $DST_LIB/
+cp $SRC_LIB/common/*.[hc] $DST_LIB/
+cp $SRC_LIB/decompress/*.[hc] $DST_LIB/
+rm $DST_LIB/{pool.[hc],threading.[hc]}
+rm -rf zstd-1.3.6*
+echo SUCCESS!
+```
+
+Best,
+Nick Terrell
+
+Changelog:
+
+v1 -> v2:
+- Switch to upstream zstd-1.3.6 and drop all the local patches.
+- Fix comments from Daniel Kiper.
+
+v2 -> v3:
+- Remove an extra file accidentally included in the first patch.
+- Use grub_error() to set grub_errno in grub_btrfs_zstd_decompress().
+- Fix style and formatting comments.
+
+v3 -> v4:
+- Put zstd in its own module.
+- Update commit messages.
+- Use attribute unused.
+
+Nick Terrell (2):
+  Import upstream zstd-1.3.6
+  btrfs: Add zstd support to grub btrfs
+
+ Makefile.util.def                    |   10 +-
+ grub-core/Makefile.core.def          |   17 +-
+ grub-core/fs/btrfs.c                 |  108 +-
+ grub-core/lib/zstd/bitstream.h       |  458 ++++
+ grub-core/lib/zstd/compiler.h        |  133 ++
+ grub-core/lib/zstd/cpu.h             |  215 ++
+ grub-core/lib/zstd/debug.c           |   44 +
+ grub-core/lib/zstd/debug.h           |  123 +
+ grub-core/lib/zstd/entropy_common.c  |  236 ++
+ grub-core/lib/zstd/error_private.c   |   48 +
+ grub-core/lib/zstd/error_private.h   |   76 +
+ grub-core/lib/zstd/fse.h             |  708 ++++++
+ grub-core/lib/zstd/fse_decompress.c  |  309 +++
+ grub-core/lib/zstd/huf.h             |  334 +++
+ grub-core/lib/zstd/huf_decompress.c  | 1096 +++++++++
+ grub-core/lib/zstd/mem.h             |  374 ++++
+ grub-core/lib/zstd/module.c          |    3 +
+ grub-core/lib/zstd/xxhash.c          |  876 ++++++++
+ grub-core/lib/zstd/xxhash.h          |  305 +++
+ grub-core/lib/zstd/zstd.h            | 1516 +++++++++++++
+ grub-core/lib/zstd/zstd_common.c     |   81 +
+ grub-core/lib/zstd/zstd_decompress.c | 3108 ++++++++++++++++++++++++++
+ grub-core/lib/zstd/zstd_errors.h     |   92 +
+ grub-core/lib/zstd/zstd_internal.h   |  257 +++
+ tests/btrfs_test.in                  |    1 +
+ tests/util/grub-fs-tester.in         |    2 +-
+ 26 files changed, 10526 insertions(+), 4 deletions(-)
+ create mode 100644 grub-core/lib/zstd/bitstream.h
+ create mode 100644 grub-core/lib/zstd/compiler.h
+ create mode 100644 grub-core/lib/zstd/cpu.h
+ create mode 100644 grub-core/lib/zstd/debug.c
+ create mode 100644 grub-core/lib/zstd/debug.h
+ create mode 100644 grub-core/lib/zstd/entropy_common.c
+ create mode 100644 grub-core/lib/zstd/error_private.c
+ create mode 100644 grub-core/lib/zstd/error_private.h
+ create mode 100644 grub-core/lib/zstd/fse.h
+ create mode 100644 grub-core/lib/zstd/fse_decompress.c
+ create mode 100644 grub-core/lib/zstd/huf.h
+ create mode 100644 grub-core/lib/zstd/huf_decompress.c
+ create mode 100644 grub-core/lib/zstd/mem.h
+ create mode 100644 grub-core/lib/zstd/module.c
+ create mode 100644 grub-core/lib/zstd/xxhash.c
+ create mode 100644 grub-core/lib/zstd/xxhash.h
+ create mode 100644 grub-core/lib/zstd/zstd.h
+ create mode 100644 grub-core/lib/zstd/zstd_common.c
+ create mode 100644 grub-core/lib/zstd/zstd_decompress.c
+ create mode 100644 grub-core/lib/zstd/zstd_errors.h
+ create mode 100644 grub-core/lib/zstd/zstd_internal.h
+
+--
+2.17.1

@@ -1,4 +1,4 @@
-From 97bf8951f00d81754e0b1e4655b41afa04597889 Mon Sep 17 00:00:00 2001
+From dff36e53ad8cc462e6ef642cb038e1269bb22757 Mon Sep 17 00:00:00 2001
 From: Nick Terrell <terrelln@fb.com>
 Date: Fri, 5 Oct 2018 17:01:01 -0700
 Subject: [PATCH v4 2/2] btrfs: Add zstd support to grub btrfs
@@ -76,7 +76,7 @@ index 540a31f78..b09319328 100644
 
  module = {
 diff --git a/grub-core/fs/btrfs.c b/grub-core/fs/btrfs.c
-index be195448d..1f544d898 100644
+index cac9ef588..8cfb997c5 100644
 --- a/grub-core/fs/btrfs.c
 +++ b/grub-core/fs/btrfs.c
 @@ -17,6 +17,8 @@
@@ -95,8 +95,8 @@ index be195448d..1f544d898 100644
 +#include <zstd.h>
  #include <grub/i18n.h>
  #include <grub/btrfs.h>
-
-@@ -45,6 +48,9 @@ GRUB_MOD_LICENSE ("GPLv3+");
+ #include <grub/crypto.h>
+@@ -47,6 +50,9 @@ GRUB_MOD_LICENSE ("GPLv3+");
  #define GRUB_BTRFS_LZO_BLOCK_MAX_CSIZE (GRUB_BTRFS_LZO_BLOCK_SIZE + \
  				     (GRUB_BTRFS_LZO_BLOCK_SIZE / 16) + 64 + 3)
 
@@ -106,7 +106,7 @@ index be195448d..1f544d898 100644
  typedef grub_uint8_t grub_btrfs_checksum_t[0x20];
  typedef grub_uint16_t grub_btrfs_uuid_t[8];
 
-@@ -212,6 +218,7 @@ struct grub_btrfs_extent_data
+@@ -217,6 +223,7 @@ struct grub_btrfs_extent_data
  #define GRUB_BTRFS_COMPRESSION_NONE 0
  #define GRUB_BTRFS_COMPRESSION_ZLIB 1
  #define GRUB_BTRFS_COMPRESSION_LZO  2
@@ -114,7 +114,7 @@ index be195448d..1f544d898 100644
 
  #define GRUB_BTRFS_OBJECT_ID_CHUNK 0x100
 
-@@ -912,6 +919,91 @@ grub_btrfs_read_inode (struct grub_btrfs_data *data,
+@@ -1216,6 +1223,91 @@ grub_btrfs_read_inode (struct grub_btrfs_data *data,
    return grub_btrfs_read_logical (data, elemaddr, inode, sizeof (*inode), 0);
  }
 
@@ -206,7 +206,7 @@ index be195448d..1f544d898 100644
  static grub_ssize_t
  grub_btrfs_lzo_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
  			  char *obuf, grub_size_t osize)
-@@ -1087,7 +1179,8 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
+@@ -1391,7 +1483,8 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
 
        if (data->extent->compression != GRUB_BTRFS_COMPRESSION_NONE
  	  && data->extent->compression != GRUB_BTRFS_COMPRESSION_ZLIB
@@ -216,7 +216,7 @@ index be195448d..1f544d898 100644
  	{
  	  grub_error (GRUB_ERR_NOT_IMPLEMENTED_YET,
  		      "compression type 0x%x not supported",
-@@ -1127,6 +1220,15 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
+@@ -1431,6 +1524,15 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
  		  != (grub_ssize_t) csize)
  		return -1;
  	    }
@@ -232,7 +232,7 @@ index be195448d..1f544d898 100644
  	  else
  	    grub_memcpy (buf, data->extent->inl + extoff, csize);
  	  break;
-@@ -1164,6 +1266,10 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
+@@ -1468,6 +1570,10 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
  		ret = grub_btrfs_lzo_decompress (tmp, zsize, extoff
  				    + grub_le_to_cpu64 (data->extent->offset),
  				    buf, csize);

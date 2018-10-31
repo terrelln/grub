@@ -1,4 +1,4 @@
-From e3bf681b2862e73a40248d01ae85859dcb0c36bb Mon Sep 17 00:00:00 2001
+From c772a343d33e4bdf3f693400ddcc6deef3b36d71 Mon Sep 17 00:00:00 2001
 From: Nick Terrell <terrelln@fb.com>
 Date: Fri, 5 Oct 2018 16:41:46 -0700
 Subject: [PATCH v4 1/2] Import upstream zstd-1.3.6
@@ -10,7 +10,8 @@ Cc: David Sterba <dsterba@suse.cz>,
     Daniel Kiper <dkiper@net-space.pl>
 
 Import zstd-1.3.6 from upstream [1]. Only the files need for decompression
-are imported. Add `module.c` and the zstd module to the Makefile.
+are imported. Additionally makes zstd a module by adding module.c which
+contains the license, and updates Makefile.core.def.
 
 I used the latest zstd release, which includes patches [2] to build cleanly
 in GRUB.
@@ -43,7 +44,6 @@ rm -rf zstd-1.3.6*
 echo SUCCESS!
 ```
 
-Reviewed-by: Daniel Kiper <daniel.kiper@oracle.com>
 Signed-off-by: Nick Terrell <terrelln@fb.com>
 ---
 v1 -> v2:

@@ -1,0 +1,296 @@
+From 3eae51f42a1a6265ef85228a3920c28475ed4d5c Mon Sep 17 00:00:00 2001
+From: Nick Terrell <terrelln@fb.com>
+Date: Fri, 5 Oct 2018 17:01:01 -0700
+Subject: [PATCH v6 2/2] btrfs: Add zstd support to grub btrfs
+To: Nick Terrell <terrelln@fb.com>
+Cc: David Sterba <dsterba@suse.cz>,
+    kernel-team@fb.com,
+    linux-btrfs@vger.kernel.org,
+    grub-devel@gnu.org,
+    Daniel Kiper <dkiper@net-space.pl>
+
+- Adds zstd support to the btrfs module.
+- Adds a test case for btrfs zstd support.
+- Changes top_srcdir to srcdir in the btrfs module's lzo include
+  following comments from Daniel Kiper about the zstd include.
+
+Tested on Ubuntu-18.04 with a btrfs /boot partition with and without zstd
+compression. A test case was also added to the test suite that fails before
+the patch, and passes after.
+
+Signed-off-by: Nick Terrell <terrelln@fb.com>
+---
+v1 -> v2:
+- Fix comments from Daniel Kiper.
+
+v2 -> v3:
+- Use grub_error() to set grub_errno in grub_btrfs_zstd_decompress().
+- Fix style and formatting comments.
+
+v3 -> v4:
+- Use attribute unused.
+
+v4 -> v5:
+- Add zstd's module.c to Makefile.util.def.
+- Clarify some error logging.
+- Explain why I changed lzo's include.
+
+v5 -> v6:
+- Formatting changes (no functional changes).
+
+ Makefile.util.def            |  11 +++-
+ grub-core/Makefile.core.def  |   2 +-
+ grub-core/fs/btrfs.c         | 120 ++++++++++++++++++++++++++++++++++-
+ tests/btrfs_test.in          |   1 +
+ tests/util/grub-fs-tester.in |   2 +-
+ 5 files changed, 132 insertions(+), 4 deletions(-)
+
+diff --git a/Makefile.util.def b/Makefile.util.def
+index 9ae45f351..a0495a87f 100644
+--- a/Makefile.util.def
++++ b/Makefile.util.def
+@@ -54,7 +54,7 @@ library = {
+ library = {
+   name = libgrubmods.a;
+   cflags = '-fno-builtin -Wno-undef';
+-  cppflags = '-I$(top_srcdir)/grub-core/lib/minilzo -I$(srcdir)/grub-core/lib/xzembed -DMINILZO_HAVE_CONFIG_H';
++  cppflags = '-I$(srcdir)/grub-core/lib/minilzo -I$(srcdir)/grub-core/lib/xzembed -I$(srcdir)/grub-core/lib/zstd -DMINILZO_HAVE_CONFIG_H';
+
+   common_nodist = grub_script.tab.c;
+   common_nodist = grub_script.yy.c;
+@@ -165,6 +165,15 @@ library = {
+   common = grub-core/lib/xzembed/xz_dec_bcj.c;
+   common = grub-core/lib/xzembed/xz_dec_lzma2.c;
+   common = grub-core/lib/xzembed/xz_dec_stream.c;
++  common = grub-core/lib/zstd/debug.c;
++  common = grub-core/lib/zstd/entropy_common.c;
++  common = grub-core/lib/zstd/error_private.c;
++  common = grub-core/lib/zstd/fse_decompress.c;
++  common = grub-core/lib/zstd/huf_decompress.c;
++  common = grub-core/lib/zstd/module.c;
++  common = grub-core/lib/zstd/xxhash.c;
++  common = grub-core/lib/zstd/zstd_common.c;
++  common = grub-core/lib/zstd/zstd_decompress.c;
+ };
+
+ program = {
+diff --git a/grub-core/Makefile.core.def b/grub-core/Makefile.core.def
+index 829e7bb57..2d75c4daf 100644
+--- a/grub-core/Makefile.core.def
++++ b/grub-core/Makefile.core.def
+@@ -1291,7 +1291,7 @@ module = {
+   common = fs/btrfs.c;
+   common = lib/crc.c;
+   cflags = '$(CFLAGS_POSIX) -Wno-undef';
+-  cppflags = '-I$(srcdir)/lib/posix_wrap -I$(srcdir)/lib/minilzo -DMINILZO_HAVE_CONFIG_H';
++  cppflags = '-I$(srcdir)/lib/posix_wrap -I$(srcdir)/lib/minilzo -I$(srcdir)/lib/zstd -DMINILZO_HAVE_CONFIG_H';
+ };
+
+ module = {
+diff --git a/grub-core/fs/btrfs.c b/grub-core/fs/btrfs.c
+index cac9ef588..0d5151af2 100644
+--- a/grub-core/fs/btrfs.c
++++ b/grub-core/fs/btrfs.c
+@@ -17,6 +17,14 @@
+  *  along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
+  */
+
++/*
++ * Tell zstd to expose functions that aren't part of the stable API, which
++ * aren't safe to use when linking against a dynamic library. We vendor in a
++ * specific zstd version, so we know what we're getting. We need these unstable
++ * functions to provide our own allocator, which uses grub_malloc(), to zstd.
++ */
++#define ZSTD_STATIC_LINKING_ONLY
++
+ #include <grub/err.h>
+ #include <grub/file.h>
+ #include <grub/mm.h>
+@@ -27,6 +35,7 @@
+ #include <grub/lib/crc.h>
+ #include <grub/deflate.h>
+ #include <minilzo.h>
++#include <zstd.h>
+ #include <grub/i18n.h>
+ #include <grub/btrfs.h>
+ #include <grub/crypto.h>
+@@ -47,6 +56,9 @@ GRUB_MOD_LICENSE ("GPLv3+");
+ #define GRUB_BTRFS_LZO_BLOCK_MAX_CSIZE (GRUB_BTRFS_LZO_BLOCK_SIZE + \
+ 				     (GRUB_BTRFS_LZO_BLOCK_SIZE / 16) + 64 + 3)
+
++#define ZSTD_BTRFS_MAX_WINDOWLOG 17
++#define ZSTD_BTRFS_MAX_INPUT     (1 << ZSTD_BTRFS_MAX_WINDOWLOG)
++
+ typedef grub_uint8_t grub_btrfs_checksum_t[0x20];
+ typedef grub_uint16_t grub_btrfs_uuid_t[8];
+
+@@ -217,6 +229,7 @@ struct grub_btrfs_extent_data
+ #define GRUB_BTRFS_COMPRESSION_NONE 0
+ #define GRUB_BTRFS_COMPRESSION_ZLIB 1
+ #define GRUB_BTRFS_COMPRESSION_LZO  2
++#define GRUB_BTRFS_COMPRESSION_ZSTD 3
+
+ #define GRUB_BTRFS_OBJECT_ID_CHUNK 0x100
+
+@@ -1216,6 +1229,97 @@ grub_btrfs_read_inode (struct grub_btrfs_data *data,
+   return grub_btrfs_read_logical (data, elemaddr, inode, sizeof (*inode), 0);
+ }
+
++static void *grub_zstd_malloc (void *state __attribute__((unused)), size_t size)
++{
++    return grub_malloc (size);
++}
++
++static void grub_zstd_free (void *state __attribute__((unused)), void *address)
++{
++    return grub_free (address);
++}
++
++static ZSTD_customMem grub_zstd_allocator (void)
++{
++    ZSTD_customMem allocator;
++
++    allocator.customAlloc = &grub_zstd_malloc;
++    allocator.customFree = &grub_zstd_free;
++    allocator.opaque = NULL;
++
++    return allocator;
++}
++
++static grub_ssize_t
++grub_btrfs_zstd_decompress (char *ibuf, grub_size_t isize, grub_off_t off,
++			    char *obuf, grub_size_t osize)
++{
++    void *allocated = NULL;
++    char *otmpbuf = obuf;
++    grub_size_t otmpsize = osize;
++    ZSTD_DCtx *dctx = NULL;
++    grub_size_t zstd_ret;
++    grub_ssize_t ret = -1;
++
++    /*
++     * Zstd will fail if it can't fit the entire output in the destination
++     * buffer, so if osize isn't large enough, allocate a temporary buffer.
++     */
++    if (otmpsize < ZSTD_BTRFS_MAX_INPUT)
++      {
++	allocated = grub_malloc (ZSTD_BTRFS_MAX_INPUT);
++	if (!allocated)
++	  {
++	    grub_error (GRUB_ERR_OUT_OF_MEMORY,
++			"failed allocate a zstd buffer");
++	    goto err;
++	  }
++	otmpbuf = (char *) allocated;
++	otmpsize = ZSTD_BTRFS_MAX_INPUT;
++      }
++
++    /* Create the ZSTD_DCtx. */
++    dctx = ZSTD_createDCtx_advanced (grub_zstd_allocator ());
++    if (!dctx)
++      {
++	/* ZSTD_createDCtx_advanced() only fails if it is out of memory. */
++	grub_error (GRUB_ERR_OUT_OF_MEMORY, "failed to create a zstd context");
++	goto err;
++      }
++
++    /*
++     * Get the real input size, there may be junk at the
++     * end of the frame.
++     */
++    isize = ZSTD_findFrameCompressedSize (ibuf, isize);
++    if (ZSTD_isError (isize))
++      {
++	grub_error (GRUB_ERR_BAD_COMPRESSED_DATA, "zstd data corrupted");
++	goto err;
++      }
++
++    /* Decompress and check for errors. */
++    zstd_ret = ZSTD_decompressDCtx (dctx, otmpbuf, otmpsize, ibuf, isize);
++    if (ZSTD_isError (zstd_ret))
++      {
++	grub_error (GRUB_ERR_BAD_COMPRESSED_DATA, "zstd data corrupted");
++	goto err;
++      }
++
++    /*
++     * Move the requested data into the obuf. obuf may be equal
++     * to otmpbuf, which is why grub_memmove() is required.
++     */
++    grub_memmove (obuf, otmpbuf + off, osize);
++    ret = osize;
++
++err:
++    grub_free (allocated);
++    ZSTD_freeDCtx (dctx);
++
++    return ret;
++}
++
+ static grub_ssize_t
+ grub_btrfs_lzo_decompress(char *ibuf, grub_size_t isize, grub_off_t off,
+ 			  char *obuf, grub_size_t osize)
+@@ -1391,7 +1495,8 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
+
+       if (data->extent->compression != GRUB_BTRFS_COMPRESSION_NONE
+ 	  && data->extent->compression != GRUB_BTRFS_COMPRESSION_ZLIB
+-	  && data->extent->compression != GRUB_BTRFS_COMPRESSION_LZO)
++	  && data->extent->compression != GRUB_BTRFS_COMPRESSION_LZO
++	  && data->extent->compression != GRUB_BTRFS_COMPRESSION_ZSTD)
+ 	{
+ 	  grub_error (GRUB_ERR_NOT_IMPLEMENTED_YET,
+ 		      "compression type 0x%x not supported",
+@@ -1431,6 +1536,15 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
+ 		  != (grub_ssize_t) csize)
+ 		return -1;
+ 	    }
++	  else if (data->extent->compression == GRUB_BTRFS_COMPRESSION_ZSTD)
++	    {
++	      if (grub_btrfs_zstd_decompress (data->extent->inl, data->extsize -
++					      ((grub_uint8_t *) data->extent->inl
++					       - (grub_uint8_t *) data->extent),
++					      extoff, buf, csize)
++		  != (grub_ssize_t) csize)
++		return -1;
++	    }
+ 	  else
+ 	    grub_memcpy (buf, data->extent->inl + extoff, csize);
+ 	  break;
+@@ -1468,6 +1582,10 @@ grub_btrfs_extent_read (struct grub_btrfs_data *data,
+ 		ret = grub_btrfs_lzo_decompress (tmp, zsize, extoff
+ 				    + grub_le_to_cpu64 (data->extent->offset),
+ 				    buf, csize);
++	      else if (data->extent->compression == GRUB_BTRFS_COMPRESSION_ZSTD)
++		ret = grub_btrfs_zstd_decompress (tmp, zsize, extoff
++				    + grub_le_to_cpu64 (data->extent->offset),
++				    buf, csize);
+ 	      else
+ 		ret = -1;
+
+diff --git a/tests/btrfs_test.in b/tests/btrfs_test.in
+index 2b37ddd33..0c9bf3a68 100644
+--- a/tests/btrfs_test.in
++++ b/tests/btrfs_test.in
+@@ -18,6 +18,7 @@ fi
+ "@builddir@/grub-fs-tester" btrfs
+ "@builddir@/grub-fs-tester" btrfs_zlib
+ "@builddir@/grub-fs-tester" btrfs_lzo
++"@builddir@/grub-fs-tester" btrfs_zstd
+ "@builddir@/grub-fs-tester" btrfs_raid0
+ "@builddir@/grub-fs-tester" btrfs_raid1
+ "@builddir@/grub-fs-tester" btrfs_single
+diff --git a/tests/util/grub-fs-tester.in b/tests/util/grub-fs-tester.in
+index ef65fbc93..bc14a05ca 100644
+--- a/tests/util/grub-fs-tester.in
++++ b/tests/util/grub-fs-tester.in
+@@ -629,7 +629,7 @@ for LOGSECSIZE in $(range "$MINLOGSECSIZE" "$MAXLOGSECSIZE" 1); do
+ 		    ;;
+ 		x"btrfs")
+ 		    "mkfs.btrfs" -s $SECSIZE -L "$FSLABEL" "${MOUNTDEVICE}" ;;
+-		x"btrfs_zlib" | x"btrfs_lzo")
++		x"btrfs_zlib" | x"btrfs_lzo" | x"btrfs_zstd")
+ 		    "mkfs.btrfs" -s $SECSIZE -L "$FSLABEL" "${MOUNTDEVICE}"
+ 		    MOUNTOPTS="compress=${fs/btrfs_/},"
+ 		    MOUNTFS="btrfs"
+--
+2.17.1
